@@ -82,19 +82,26 @@ export async function GET(request: NextRequest) {
     const realFlights = await fetchFlightsFromApi(flightNumber);
 
     if (realFlights && realFlights.length > 0) {
-        const mappedFlights = realFlights.map((flight, index) => ({
-            id: `real-${index}`,
-            flightNumber: flight.flight.iata,
-            airline: flight.airline.name,
-            departureTime: flight.departure.scheduled,
-            arrivalTime: flight.arrival.scheduled,
-            departureTimezone: flight.departure.timezone,
-            arrivalTimezone: flight.arrival.timezone,
-            departureLocation: `${flight.departure.airport} (${flight.departure.iata})`,
-            arrivalLocation: `${flight.arrival.airport} (${flight.arrival.iata})`,
-            departureCity: flight.departure.airport, // API doesn't always provide city directly in this endpoint, using airport name as fallback
-            arrivalCity: flight.arrival.airport,
-        }));
+        const mappedFlights = realFlights.map((flight, index) => {
+            // Use safe fallbacks for flight number fields
+            const flightNum = flight.flight?.iata ?? flight.flight?.number ?? flight.flight?.icao ?? 'N/A';
+            const departureLocation = flight.departure?.airport ? `${flight.departure.airport} (${flight.departure.iata ?? ''})`.trim() : 'Unknown';
+            const arrivalLocation = flight.arrival?.airport ? `${flight.arrival.airport} (${flight.arrival.iata ?? ''})`.trim() : 'Unknown';
+
+            return {
+                id: `real-${index}`,
+                flightNumber: flightNum,
+                airline: flight.airline?.name ?? 'Unknown Airline',
+                departureTime: flight.departure?.scheduled ?? flight.departure?.estimated ?? '',
+                arrivalTime: flight.arrival?.scheduled ?? flight.arrival?.estimated ?? '',
+                departureTimezone: flight.departure?.timezone ?? '',
+                arrivalTimezone: flight.arrival?.timezone ?? '',
+                departureLocation,
+                arrivalLocation,
+                departureCity: flight.departure?.airport ?? '',
+                arrivalCity: flight.arrival?.airport ?? '',
+            };
+        });
 
         return NextResponse.json({ flights: mappedFlights });
     }
