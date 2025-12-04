@@ -1,6 +1,4 @@
-import { NextResponse } from 'next/server';
-
-const AVIATIONSTACK_API_KEY = process.env.AVIATIONSTACK_API_KEY;
+const AVIATION_STACK_API_KEY = process.env.AVIATION_STACK_API_KEY;
 const BASE_URL = 'https://api.aviationstack.com/v1';
 
 export interface AviationStackFlight {
@@ -46,23 +44,31 @@ export interface AviationStackFlight {
     };
 }
 
-export async function fetchFlightsFromApi(flightNumber: string) {
-    if (!AVIATIONSTACK_API_KEY) {
-        console.warn('AVIATIONSTACK_API_KEY is not set');
+// Return type: array of flights or null on error/missing key
+export async function fetchFlightsFromApi(flightNumber: string): Promise<AviationStackFlight[] | null> {
+    if (!AVIATION_STACK_API_KEY) {
+        console.warn('AVIATION_STACK_API_KEY is not set');
         return null;
     }
 
     try {
         const response = await fetch(
-            `${BASE_URL}/flights?access_key=${AVIATIONSTACK_API_KEY}&flight_iata=${flightNumber}`
+            `${BASE_URL}/flights?access_key=${AVIATION_STACK_API_KEY}&flight_iata=${encodeURIComponent(flightNumber)}`
         );
 
         if (!response.ok) {
-            console.error('AviationStack API error:', response.statusText);
+            console.error('AviationStack API error:', response.status, response.statusText);
             return null;
         }
 
         const data = await response.json();
+
+        // Ensure the expected shape exists
+        if (!data || !Array.isArray(data.data)) {
+            console.warn('AviationStack returned unexpected response shape:', data);
+            return null;
+        }
+
         return data.data as AviationStackFlight[];
     } catch (error) {
         console.error('Error fetching from AviationStack:', error);
